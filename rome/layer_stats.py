@@ -181,7 +181,7 @@ def layer_stats(
         num_workers=2,
     )
     batch_count = -(-(sample_size or len(ds)) // batch_size)
-    with torch.no_grad():
+     with torch.no_grad():
         for batch_group in progress(loader, total=batch_count):
             for batch in batch_group:
                 batch = dict_to_(batch, "cuda")
@@ -190,9 +190,13 @@ def layer_stats(
                 ) as tr:
                     model(**batch)
                 feats = flatten_masked_batch(tr.input, batch["attention_mask"])
-                # feats = flatten_masked_batch(tr.output, batch["attention_mask"])
                 feats = feats.to(dtype=dtype)
-                stat.add(feats)
+                all_feats.append(feats.cpu())  # 将 K_0 添加到列表中
+                all_feats = torch.cat(all_feats, dim=0)  # 合并所有批次
+                filename.parent.mkdir(parents=True, exist_ok=True)  # 确保目录存在
+                torch.save(all_feats, filename)  # 保存为文件
+                print(f"K_0 saved to {filename}")
+    return all_feats
     return stat
 
 if __name__ == "__main__":
